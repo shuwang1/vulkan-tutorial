@@ -71,7 +71,7 @@ int main(){
 
 	VkPhysicalDeviceFeatures deviceFeatures;
 	VkDeviceCreateInfo deviceCreateInfo{ VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO,
-		NULL,
+        NULL,
 		0,                //VkDeviceCreateFlags             flags;
 		1,                //uint32_t                        queueCreateInfoCount;
 		&queueCreateInfo, //const VkDeviceQueueCreateInfo*  pQueueCreateInfos;
@@ -121,17 +121,19 @@ int main(){
 	}else{
 		result = vkEnumerateInstanceLayerProperties( &layerCount, availableLayers.data());
 		assert( result == VK_SUCCESS );
-	        std::cout << layerCount << " layers supported\n";
+        std::cout << layerCount << " layers supported from vkEnumerateInstanceLayerProperties\n";
+        for( const char* layerName: validationLayers ){
 
-                for( const char* layerName: validationLayers ){
-         
          	       for( const auto& layerProperties: availableLayers ){
+                       
          		       if ( strcmp( layerName, layerProperties.layerName ) == 0 ){
-         			       std::cout << layerName << '\n';
-         
-         		       }
+         			       std::cout << '\t' << layerName << "*\n";
+         		       }else{
+                           std::cout << '\t' <<  layerProperties.layerName << std::endl;
+                       }
+
          	       }
-                }
+        }
 	}
 
 
@@ -141,7 +143,7 @@ int main(){
 	const bool enableValidationLayers = true;
 #endif
 
-        /************************************************************************
+    /************************************************************************
 	 * appInfo, debugUtilsMessengerCreateInfo ->
 	 * instanceCreateInfo -> instance -> physicalDevice -> 
 	 * queueCreateInfo -> 
