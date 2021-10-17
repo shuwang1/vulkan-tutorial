@@ -1,6 +1,7 @@
 
 CFLAGS = -std=c++17 -g
-LDFLAGS = -lglfw -lvulkan -ldl -lpthread -lX11 -lXxf86vm -lXrandr -lXi
+LDFLAGS = -L/opt/local/lib -lglfw -lvulkan -ldl -lpthread -lX11 -lXxf86vm -lXrandr -lXi
+#LDFLAGS = -lglfw -lvulkan -ldl -lpthread -lX11 -lXxf86vm -lXrandr -lXi -framework Cocoa -framework OpenGL -framework IOKit
 
 
 VulkanTest: main.cpp

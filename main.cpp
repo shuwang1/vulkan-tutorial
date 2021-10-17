@@ -76,7 +76,7 @@ int main(){
 		1,                //uint32_t                        queueCreateInfoCount;
 		&queueCreateInfo, //const VkDeviceQueueCreateInfo*  pQueueCreateInfos;
 		0,
-                NULL,
+        NULL,
 		0,
 		NULL,
                 &deviceFeatures	
@@ -92,8 +92,10 @@ int main(){
 	uint32_t glfwExtensionCount = 0;
 	const char** glfwExtensions = glfwGetRequiredInstanceExtensions( &glfwExtensionCount );
 	std::cout << glfwExtensionCount << " glfwExtensions supported\n";
-        for( int ii=0; ii < glfwExtensionCount; ii++  ){
-		std::cout << glfwExtensions[ii] << '\n';
+    for( int ii=0; ii < glfwExtensionCount; ii++  ){
+
+		    std::cout << '\t' << glfwExtensions[ii] << '\n';
+
 	}
 
 	
@@ -158,16 +160,16 @@ int main(){
 	if( enableValidationLayers ){
 //#define VK_EXT_DEBUG_UTILS_EXTENSION_NAME    ("VK_EXT_debug_utils")
 		glExtensions.push_back( VK_EXT_DEBUG_UTILS_EXTENSION_NAME );
-
+glExtensions.pop_back();
+glExtensions.pop_back();
 		instanceCreateInfo.enabledLayerCount   = static_cast<uint32_t>( validationLayers.size() );
 		instanceCreateInfo.ppEnabledLayerNames = validationLayers.data();
 		instanceCreateInfo.enabledExtensionCount   = static_cast<uint32_t>( glExtensions.size() );
 		instanceCreateInfo.ppEnabledExtensionNames = glExtensions.data();
-
-               	deviceCreateInfo.enabledLayerCount   = static_cast<uint32_t>( validationLayers.size() );
-               	deviceCreateInfo.ppEnabledLayerNames = validationLayers.data();
-               	deviceCreateInfo.enabledExtensionCount   = static_cast<uint32_t>( glExtensions.size() );
-               	deviceCreateInfo.ppEnabledExtensionNames = glExtensions.data();
+        //deviceCreateInfo.enabledLayerCount   = static_cast<uint32_t>( validationLayers.size() );
+        //deviceCreateInfo.ppEnabledLayerNames = validationLayers.data();
+        //deviceCreateInfo.enabledExtensionCount   = static_cast<uint32_t>( glExtensions.size() );
+        //deviceCreateInfo.ppEnabledExtensionNames = glExtensions.data();
 	}
 
 	std::cout << glExtensions.size() << " glfwExtensions supported\n";
@@ -246,8 +248,9 @@ int main(){
 	}
 
 
-        VkDevice device{};  
+    VkDevice device{}; 
 	if( vkCreateDevice(physicalDevice, &deviceCreateInfo, nullptr, &device) != VK_SUCCESS ){
+
 		throw std::runtime_error( "failed to create a logical device!" );
 	}
 
