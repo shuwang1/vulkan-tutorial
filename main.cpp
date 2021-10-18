@@ -1,6 +1,7 @@
 
 #define GLFW_INCLUDE_VULKAN
 #include <GLFW/glfw3.h>
+#include <GLFW/glfw3native.h>
 
 #define GLM_FORCE_RADIANS
 #define GLM_FORCE_DEPTH_ZERO_TO_ONE
@@ -68,18 +69,19 @@ int main(){
                 1,    //uint32_t                  queueCount
                 &queuePriority 
 	};
+    std::vector<VkDeviceQueueCreateInfo> queueCreateInfos;
 
 	VkPhysicalDeviceFeatures deviceFeatures;
 	VkDeviceCreateInfo deviceCreateInfo{ VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO,
         NULL,
 		0,                //VkDeviceCreateFlags             flags;
 		1,                //uint32_t                        queueCreateInfoCount;
-		&queueCreateInfo, //const VkDeviceQueueCreateInfo*  pQueueCreateInfos;
+		queueCreateInfos.data(),//const VkDeviceQueueCreateInfo*  pQueueCreateInfos;
 		0,
         NULL,
 		0,
 		NULL,
-                &deviceFeatures	
+        &deviceFeatures	
 	};
 
 	glfwInit();
@@ -101,14 +103,14 @@ int main(){
 	
 	uint32_t extensionCount = 0;
 	result = vkEnumerateInstanceExtensionProperties( nullptr, &extensionCount, nullptr );
-        assert( result == VK_SUCCESS );
-        std::vector<VkExtensionProperties> extensions( extensionCount);
+    assert( result == VK_SUCCESS );
+    std::vector<VkExtensionProperties> availableExtensions( extensionCount);
 	if( 0 == extensionCount ){
 		throw std::runtime_error( "failed to find any extension" );
 	}else{
-		vkEnumerateInstanceExtensionProperties( nullptr, &extensionCount, extensions.data() );
-		std::cout << extensionCount << " InstanceExtensions supported\n";
-		for ( const auto& extension: extensions ){
+		vkEnumerateInstanceExtensionProperties( nullptr, &extensionCount, availableExtensions.data() );
+		std::cout << extensionCount << " InstanceExtensions supported from vkEnumerateInstanceExtensionProperties\n";
+		for ( const auto& extension: availableExtensions ){
 			std::cout << '\t' << extension.extensionName << '\n';
 		}
 	}
@@ -160,8 +162,8 @@ int main(){
 	if( enableValidationLayers ){
 //#define VK_EXT_DEBUG_UTILS_EXTENSION_NAME    ("VK_EXT_debug_utils")
 		glExtensions.push_back( VK_EXT_DEBUG_UTILS_EXTENSION_NAME );
-glExtensions.pop_back();
-glExtensions.pop_back();
+//glExtensions.pop_back();
+//glExtensions.pop_back();
 		instanceCreateInfo.enabledLayerCount   = static_cast<uint32_t>( validationLayers.size() );
 		instanceCreateInfo.ppEnabledLayerNames = validationLayers.data();
 		instanceCreateInfo.enabledExtensionCount   = static_cast<uint32_t>( glExtensions.size() );
@@ -182,10 +184,10 @@ glExtensions.pop_back();
 		throw std::runtime_error("vkCreateInstanceInfo failed!");
 	}
 
-	uint32_t deviceCount = 0;
+	uint32_t deviceCount = 0; //<-- vkEnumeratePhysicalDevices <-- instance 
 	result = vkEnumeratePhysicalDevices( instance, &deviceCount, nullptr );
-        assert( result == VK_SUCCESS );
-	std::vector<VkPhysicalDevice> devices(deviceCount); 
+    assert( result == VK_SUCCESS );
+	std::vector<VkPhysicalDevice> devices(deviceCount); //<-- vkEnumeratePhysicalDevices <-- instance
 	VkPhysicalDevice physicalDevice = VK_NULL_HANDLE;
 	VkPhysicalDeviceProperties deviceProperties;
 
@@ -203,7 +205,7 @@ glExtensions.pop_back();
 
 			switch( deviceProperties.deviceType ){
 				case VK_PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU:
-                                        std::cout << '\t' << "VK_PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU" << std::endl;
+                    std::cout << '\t' << "VK_PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU" << std::endl;
 					break;
 				case VK_PHYSICAL_DEVICE_TYPE_CPU:
 					std::cout << '\t' << "VK_PHYSICAL_DEVICE_TYPE_CPU" << std::endl;
@@ -229,7 +231,10 @@ glExtensions.pop_back();
 	uint32_t queueFamilyCount = 0;
 	vkGetPhysicalDeviceQueueFamilyProperties( physicalDevice, &queueFamilyCount, nullptr );
 	std::vector<VkQueueFamilyProperties> queueFamilies( queueFamilyCount );
-        std::optional<uint32_t> queueFamilyIdx;
+
+    std::optional<uint32_t> graphicsQueueFamilyIdx;
+    std::optional<uint32_t> presentationQueueFamilyIdx;
+
 	if( 0 == queueFamilyCount ){
 		throw std::runtime_error( "failed to find physical device queue family\n" );
 	}else{
@@ -238,16 +243,18 @@ glExtensions.pop_back();
 		for(int ii=0; ii<queueFamilyCount; ii++ ){
 			std::cout << queueFamilies[ii].queueFlags << '\t' << queueFamilies.data() << std::endl;
 			if( queueFamilies[ii].queueFlags & VK_QUEUE_GRAPHICS_BIT ){
-				queueFamilyIdx = ii;
+				graphicsQueueFamilyIdx = ii;
+		        std::cout << "queueCreateInfo.queueFamilyIndex = " << graphicsQueueFamilyIdx.value() << std::endl;
+                queueCreateInfo.queueFamilyIndex = graphicsQueueFamilyIdx.value();
+                queueCreateInfo.queueCount       = 1;
+                queueCreateInfos.push_back( queueCreateInfo );
 			}
 		}
 
-		std::cout << "queueCreateInfo.queueFamilyIndex = " << queueFamilyIdx.value() << std::endl;
-	        queueCreateInfo.queueFamilyIndex = queueFamilyIdx.value();
-	        queueCreateInfo.queueCount       = 1;
 	}
 
-
+    deviceCreateInfo.queueCreateInfoCount = static_cast<uint32_t> ( queueCreateInfos.size() );
+    deviceCreateInfo.pQueueCreateInfos    = queueCreateInfos.data();
     VkDevice device{}; 
 	if( vkCreateDevice(physicalDevice, &deviceCreateInfo, nullptr, &device) != VK_SUCCESS ){
 
@@ -255,10 +262,46 @@ glExtensions.pop_back();
 	}
 
 	VkQueue graphicsQueue;
-	vkGetDeviceQueue( device, queueFamilyIdx.value(), 0, &graphicsQueue );
+	vkGetDeviceQueue( device, graphicsQueueFamilyIdx.value(), 0, &graphicsQueue );
+
+    VkSurfaceKHR surface;
+
+#ifdef _WIN32
+#define GLFW_EXPOSE_NATIVE_WIN32
+  VkWin32SurfaceCreateINfoKHR surfaceCreateInfo{ VK_STRUCTURE_TYPE_WIN32_SURFACE_CREATE_INFO_KHR,
+      NULL,
+      0,
+      glfwGetWin32Window(  ),
+      GetModuleHandle(nullptr)
+  };
+#endif
+
+#ifdef __linux__
+#include <xcb/xcb.h>
+  VkXcbSurfaceCreateInfoKHR surfaceCreateInfo{ VK_STRUCTURE_TYPE_XCB_SURFACE_CREATE_INFO_KHR,
+      NULL,
+      0,
+      xcb_connect( NULL, 0 ),
+      ;
+  };
+#endif
 
 
-        glm::mat4 matrix;
+    result = glfwCreateWindowSurface( instance, window, nullptr, &surface );
+    if( result != VK_SUCCESS ){
+        throw std::runtime_error( "failed to create a window surface!" );
+    }
+
+    vkEnumerateDeviceExtensionProperties( physicalDevice, nullptr, &extensionCount, nullptr );
+    std::cout << extensionCount << " extensions available from vkEnumerateDeviceExtensionProperties" << std::endl;
+    availableExtensions.resize( extensionCount );
+    vkEnumerateDeviceExtensionProperties( physicalDevice, nullptr, &extensionCount, availableExtensions.data() );
+    for (const auto& extension: availableExtensions ){
+        std::cout << '\t' << extension.extensionName << std::endl;
+    }
+
+
+    glm::mat4 matrix;
 	glm::vec4 vec;
 
 	auto test = matrix * vec;
@@ -267,7 +310,8 @@ glExtensions.pop_back();
 		glfwPollEvents();
 	}
 
-
+    vkDestroySurfaceKHR( instance, surface, nullptr );
+    vkDestroyInstance( instance, nullptr );
 	glfwDestroyWindow( window );
 
 	glfwTerminate();
